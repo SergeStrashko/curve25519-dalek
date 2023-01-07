@@ -43,14 +43,15 @@ curve25519-dalek = "3"
 To use the latest prerelease (see changes [below](#breaking-changes-in-400)),
 use the following line in your project's `Cargo.toml`:
 ```toml
-curve25519-dalek = "4.0.0-pre.3"
+curve25519-dalek = "4.0.0-pre.5"
 ```
 
 ## Feature Flags
 
 | Feature        | Default? | Description |
 | :---           |  :---:   | :---        |
-| `alloc`        |    ✓     | Enables Edwards and Ristretto multiscalar multiplication, batch scalar inversion, and batch Ristretto double-and-compress. |
+| `alloc`        |    ✓     | Enables Edwards and Ristretto multiscalar multiplication, batch scalar inversion, and batch Ristretto double-and-compress. Also enables `zeroize`. |
+| `zeroize`      |    ✓     | Enables [`Zeroize`][zeroize-trait] for all scalar and curve point types. |
 | `rand_core`    |          | Enables `Scalar::random` and `RistrettoPoint::random`. This is an optional dependency whose version is not subject to SemVer. See [below](#public-api-semver-exemptions) for more details. |
 | `digest`       |          | Enables `RistrettoPoint::{from_hash, hash_from_bytes}` and `Scalar::{from_hash, hash_from_bytes}`. This is an optional dependency whose version is not subject to SemVer. See [below](#public-api-semver-exemptions) for more details. |
 | `serde`        |          | Enables `serde` serialization/deserialization for all the point and scalar types. |
@@ -67,7 +68,7 @@ latest breaking changes are below:
 
 ### Breaking changes in 4.0.0
 
-* Update the MSRV from 1.41 to 1.56.1
+* Update the MSRV from 1.41 to 1.60
 * Update backend selection to be more automatic. See [backends](#backends)
 * Remove `std` feature flag
 * Remove `nightly` feature flag
@@ -184,8 +185,8 @@ for MSRV and public API.
 ## Minimum Supported Rust Version
 
 | Releases | MSRV   |
-| :---     | :---   |
-| 4.x      | 1.56.1 |
+| :---     |:-------|
+| 4.x      | 1.60.0 |
 | 3.x      | 1.41.0 |
 
 From 4.x and on, MSRV changes will be accompanied by a minor version bump.
@@ -320,3 +321,4 @@ contributions.
 [fiat-crypto]: https://github.com/mit-plv/fiat-crypto
 [semver]: https://semver.org/spec/v2.0.0.html
 [rngcorestd]: https://github.com/rust-random/rand/tree/7aa25d577e2df84a5156f824077bb7f6bdf28d97/rand_core#crate-features
+[zeroize-trait]: https://docs.rs/zeroize/latest/zeroize/trait.Zeroize.html

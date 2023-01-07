@@ -109,6 +109,7 @@ use subtle::ConditionallyNegatable;
 use subtle::ConditionallySelectable;
 use subtle::ConstantTimeEq;
 
+#[cfg(feature = "zeroize")]
 use zeroize::Zeroize;
 
 use crate::constants;
@@ -175,12 +176,12 @@ impl Debug for CompressedEdwardsY {
 
 impl CompressedEdwardsY {
     /// View this `CompressedEdwardsY` as an array of bytes.
-    pub fn as_bytes(&self) -> &[u8; 32] {
+    pub const fn as_bytes(&self) -> &[u8; 32] {
         &self.0
     }
 
     /// Copy this `CompressedEdwardsY` to an array of bytes.
-    pub fn to_bytes(&self) -> [u8; 32] {
+    pub const fn to_bytes(&self) -> [u8; 32] {
         self.0
     }
 
@@ -388,6 +389,7 @@ impl Default for EdwardsPoint {
 // Zeroize implementations for wiping points from memory
 // ------------------------------------------------------------------------
 
+#[cfg(feature = "zeroize")]
 impl Zeroize for CompressedEdwardsY {
     /// Reset this `CompressedEdwardsY` to the compressed form of the identity element.
     fn zeroize(&mut self) {
@@ -396,6 +398,7 @@ impl Zeroize for CompressedEdwardsY {
     }
 }
 
+#[cfg(feature = "zeroize")]
 impl Zeroize for EdwardsPoint {
     /// Reset this `CompressedEdwardsPoint` to the identity element.
     fn zeroize(&mut self) {
@@ -478,7 +481,7 @@ impl EdwardsPoint {
     /// coordinates to projective coordinates.
     ///
     /// Free.
-    pub(crate) fn as_projective(&self) -> ProjectivePoint {
+    pub(crate) const fn as_projective(&self) -> ProjectivePoint {
         ProjectivePoint {
             X: self.X,
             Y: self.Y,
@@ -834,7 +837,7 @@ macro_rules! impl_basepoint_table {
         ///
         /// * [`EdwardsBasepointTableRadix16`]: 30KB, 64A
         ///   (this is the default size, and is used for
-        ///   [`constants::ED25519_BASEPOINT_TABLE`])
+        ///   [`ED25519_BASEPOINT_TABLE`])
         /// * [`EdwardsBasepointTableRadix64`]: 120KB, 43A
         /// * [`EdwardsBasepointTableRadix128`]: 240KB, 37A
         /// * [`EdwardsBasepointTableRadix256`]: 480KB, 33A
@@ -855,6 +858,7 @@ macro_rules! impl_basepoint_table {
         /// When \\(w = 8\\), we can't fit \\(carry \cdot 2^{w}\\) into an `i8`, so we
         /// add the carry bit onto an additional coefficient.
         #[derive(Clone)]
+        #[repr(transparent)]
         pub struct $name(pub(crate) [$table<AffineNielsPoint>; 32]);
 
         impl BasepointTable for $name {
@@ -1114,7 +1118,7 @@ impl Debug for EdwardsPoint {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::constants;
+    use crate::constants::ED25519_BASEPOINT_TABLE;
     use crate::field::FieldElement;
     use crate::scalar::Scalar;
     use subtle::ConditionallySelectable;
@@ -1208,7 +1212,7 @@ mod test {
     /// Test that computing 1*basepoint gives the correct basepoint.
     #[test]
     fn basepoint_mult_one_vs_basepoint() {
-        let bp = &constants::ED25519_BASEPOINT_TABLE * &Scalar::ONE;
+        let bp = ED25519_BASEPOINT_TABLE * &Scalar::ONE;
         let compressed = bp.compress();
         assert_eq!(compressed, constants::ED25519_BASEPOINT_COMPRESSED);
     }
@@ -1216,7 +1220,7 @@ mod test {
     /// Test that `EdwardsBasepointTable::basepoint()` gives the correct basepoint.
     #[test]
     fn basepoint_table_basepoint_function_correct() {
-        let bp = constants::ED25519_BASEPOINT_TABLE.basepoint();
+        let bp = ED25519_BASEPOINT_TABLE.basepoint();
         assert_eq!(bp.compress(), constants::ED25519_BASEPOINT_COMPRESSED);
     }
 
@@ -1268,7 +1272,7 @@ mod test {
     #[test]
     fn to_affine_niels_clears_denominators() {
         // construct a point as aB so it has denominators (ie. Z != 1)
-        let aB = &constants::ED25519_BASEPOINT_TABLE * &A_SCALAR;
+        let aB = ED25519_BASEPOINT_TABLE * &A_SCALAR;
         let aB_affine_niels = aB.as_affine_niels();
         let also_aB = (&EdwardsPoint::identity() + &aB_affine_niels).as_extended();
         assert_eq!(aB.compress(), also_aB.compress());
@@ -1277,14 +1281,14 @@ mod test {
     /// Test basepoint_mult versus a known scalar multiple from ed25519.py
     #[test]
     fn basepoint_mult_vs_ed25519py() {
-        let aB = &constants::ED25519_BASEPOINT_TABLE * &A_SCALAR;
+        let aB = ED25519_BASEPOINT_TABLE * &A_SCALAR;
         assert_eq!(aB.compress(), A_TIMES_BASEPOINT);
     }
 
     /// Test that multiplication by the basepoint order kills the basepoint
     #[test]
     fn basepoint_mult_by_basepoint_order() {
-        let B = &constants::ED25519_BASEPOINT_TABLE;
+        let B = ED25519_BASEPOINT_TABLE;
         let should_be_id = B * &constants::BASEPOINT_ORDER;
         assert!(should_be_id.is_identity());
     }
@@ -1292,7 +1296,7 @@ mod test {
     /// Test precomputed basepoint mult
     #[test]
     fn test_precomputed_basepoint_mult() {
-        let aB_1 = &constants::ED25519_BASEPOINT_TABLE * &A_SCALAR;
+        let aB_1 = ED25519_BASEPOINT_TABLE * &A_SCALAR;
         let aB_2 = constants::ED25519_BASEPOINT_POINT * A_SCALAR;
         assert_eq!(aB_1.compress(), aB_2.compress());
     }
@@ -1317,7 +1321,7 @@ mod test {
     #[test]
     fn basepoint_mult_two_vs_basepoint2() {
         let two = Scalar::from(2u64);
-        let bp2 = &constants::ED25519_BASEPOINT_TABLE * &two;
+        let bp2 = ED25519_BASEPOINT_TABLE * &two;
         assert_eq!(bp2.compress(), BASE2_CMPRSSD);
     }
 
@@ -1333,7 +1337,7 @@ mod test {
         let table_radix128 = EdwardsBasepointTableRadix128::create(P);
         let table_radix256 = EdwardsBasepointTableRadix256::create(P);
 
-        let aP = (&constants::ED25519_BASEPOINT_TABLE * &a).compress();
+        let aP = (ED25519_BASEPOINT_TABLE * &a).compress();
         let aP16 = (&table_radix16 * &a).compress();
         let aP32 = (&table_radix32 * &a).compress();
         let aP64 = (&table_radix64 * &a).compress();
@@ -1363,7 +1367,7 @@ mod test {
         let table_radix128 = EdwardsBasepointTableRadix128::create(P);
         let table_radix256 = EdwardsBasepointTableRadix256::create(P);
 
-        let aP = (&constants::ED25519_BASEPOINT_TABLE * &a).compress();
+        let aP = (ED25519_BASEPOINT_TABLE * &a).compress();
         let aP16 = (&table_radix16 * &a).compress();
         let aP32 = (&table_radix32 * &a).compress();
         let aP64 = (&table_radix64 * &a).compress();
@@ -1513,7 +1517,7 @@ mod test {
         // Construct points G_i = x_i * B
         let Gs = xs
             .iter()
-            .map(|xi| xi * &constants::ED25519_BASEPOINT_TABLE)
+            .map(|xi| xi * ED25519_BASEPOINT_TABLE)
             .collect::<Vec<_>>();
 
         // Compute H1 = <xs, Gs> (consttime)
@@ -1521,7 +1525,7 @@ mod test {
         // Compute H2 = <xs, Gs> (vartime)
         let H2 = EdwardsPoint::vartime_multiscalar_mul(&xs, &Gs);
         // Compute H3 = <xs, Gs> = sum(xi^2) * B
-        let H3 = &check * &constants::ED25519_BASEPOINT_TABLE;
+        let H3 = &check * ED25519_BASEPOINT_TABLE;
 
         assert_eq!(H1, H3);
         assert_eq!(H2, H3);
@@ -1571,7 +1575,7 @@ mod test {
     fn vartime_precomputed_vs_nonprecomputed_multiscalar() {
         let mut rng = rand::thread_rng();
 
-        let B = &crate::constants::ED25519_BASEPOINT_TABLE;
+        let B = ED25519_BASEPOINT_TABLE;
 
         let static_scalars = (0..128)
             .map(|_| Scalar::random(&mut rng))
