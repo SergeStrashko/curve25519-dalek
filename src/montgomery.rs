@@ -65,6 +65,7 @@ use subtle::Choice;
 use subtle::ConstantTimeEq;
 use subtle::{ConditionallyNegatable, ConditionallySelectable};
 
+#[cfg(feature = "zeroize")]
 use zeroize::Zeroize;
 
 /// Holds the \\(u\\)-coordinate of a point on the Montgomery form of
@@ -109,6 +110,7 @@ impl Identity for MontgomeryPoint {
     }
 }
 
+#[cfg(feature = "zeroize")]
 impl Zeroize for MontgomeryPoint {
     fn zeroize(&mut self) {
         self.0.zeroize();
@@ -117,12 +119,12 @@ impl Zeroize for MontgomeryPoint {
 
 impl MontgomeryPoint {
     /// View this `MontgomeryPoint` as an array of bytes.
-    pub fn as_bytes(&self) -> &[u8; 32] {
+    pub const fn as_bytes(&self) -> &[u8; 32] {
         &self.0
     }
 
     /// Convert this `MontgomeryPoint` to an array of bytes.
-    pub fn to_bytes(&self) -> [u8; 32] {
+    pub const fn to_bytes(&self) -> [u8; 32] {
         self.0
     }
 
@@ -351,6 +353,7 @@ impl<'a, 'b> Mul<&'b Scalar> for &'a MontgomeryPoint {
         // The final value of prev_bit above is scalar.bits()[0], i.e., the LSB of scalar
         ProjectivePoint::conditional_swap(&mut x0, &mut x1, Choice::from(prev_bit as u8));
         // Don't leave the bit in the stack
+        #[cfg(feature = "zeroize")]
         prev_bit.zeroize();
 
         x0.as_affine()
@@ -473,7 +476,7 @@ mod test {
         let mut csprng: OsRng = OsRng;
 
         let s: Scalar = Scalar::random(&mut csprng);
-        let p_edwards: EdwardsPoint = &constants::ED25519_BASEPOINT_TABLE * &s;
+        let p_edwards: EdwardsPoint = constants::ED25519_BASEPOINT_TABLE * &s;
         let p_montgomery: MontgomeryPoint = p_edwards.to_montgomery();
 
         let expected = s * p_edwards;

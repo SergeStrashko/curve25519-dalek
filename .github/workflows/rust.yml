@@ -28,11 +28,26 @@ jobs:
       - run: rustup target add ${{ matrix.target }}
       - run: ${{ matrix.deps }}
       - run: cargo test --target ${{ matrix.target }} --no-default-features
+      - run: cargo test --target ${{ matrix.target }} --no-default-features --features alloc
+      - run: cargo test --target ${{ matrix.target }} --no-default-features --features zeroize
       - run: cargo test --target ${{ matrix.target }}
       - run: cargo test --target ${{ matrix.target }} --features serde
       - env:
           RUSTFLAGS: '--cfg curve25519_dalek_backend="fiat"'
         run: cargo test --target ${{ matrix.target }}
+
+  build-nostd:
+    name: Build on no_std target (thumbv7em-none-eabi)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+          targets: thumbv7em-none-eabi
+      - run: cargo build --target thumbv7em-none-eabi --release --no-default-features
+      - run: cargo build --target thumbv7em-none-eabi --release
+      - run: cargo build --target thumbv7em-none-eabi --release --features serde
 
   build-simd:
     name: Build simd backend (nightly)
@@ -72,7 +87,7 @@ jobs:
         with:
           toolchain: ${{ matrix.rust }}
           targets: ${{ matrix.target }}
-      - run: cargo install cross
+      - uses: RustCrypto/actions/cross-install@master
       - run: cross test --release --target ${{ matrix.target }}
 
   nightly:
@@ -109,7 +124,7 @@ jobs:
     - run: cargo fmt --all -- --check
 
   msrv:
-    name: Current MSRV is 1.56.1
+    name: Current MSRV is 1.60.0
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
@@ -119,7 +134,7 @@ jobs:
     - run: cargo -Z minimal-versions check --no-default-features --features serde
     # Now check that `cargo build` works with respect to the oldest possible
     # deps and the stated MSRV
-    - uses: dtolnay/rust-toolchain@1.56.1
+    - uses: dtolnay/rust-toolchain@1.60.0
     - run: cargo build --no-default-features --features serde
 
   bench:

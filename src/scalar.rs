@@ -166,6 +166,7 @@ use subtle::ConditionallySelectable;
 use subtle::ConstantTimeEq;
 use subtle::CtOption;
 
+#[cfg(feature = "zeroize")]
 use zeroize::Zeroize;
 
 use crate::backend;
@@ -548,6 +549,7 @@ impl From<u128> for Scalar {
     }
 }
 
+#[cfg(feature = "zeroize")]
 impl Zeroize for Scalar {
     fn zeroize(&mut self) {
         self.0.zeroize();
@@ -679,10 +681,9 @@ impl Scalar {
     ///
     /// assert!(s.to_bytes() == [0u8; 32]);
     /// ```
-    pub fn to_bytes(&self) -> [u8; 32] {
+    pub const fn to_bytes(&self) -> [u8; 32] {
         self.0.as_bytes()
     }
-
 
     /// Given a nonzero `Scalar`, compute its multiplicative inverse.
     ///
@@ -770,15 +771,10 @@ impl Scalar {
         // externally, but there's no corresponding distinction for
         // field elements.
 
-        use zeroize::Zeroizing;
-
         let n = inputs.len();
         let one: UnpackedScalar = Scalar::ONE.0.as_montgomery();
 
-        // Place scratch storage in a Zeroizing wrapper to wipe it when
-        // we pass out of scope.
-        let scratch_vec = vec![one; n];
-        let mut scratch = Zeroizing::new(scratch_vec);
+        let mut scratch = vec![one; n];
 
         // Keep an accumulator of all of the previous products
         let mut acc = Scalar::ONE.0.as_montgomery();
@@ -811,6 +807,9 @@ impl Scalar {
             input.0 = UnpackedScalar::montgomery_mul(&acc, scratch);
             acc = tmp;
         }
+
+        #[cfg(feature = "zeroize")]
+        zeroize::Zeroize::zeroize(&mut scratch);
 
         ret
     }
