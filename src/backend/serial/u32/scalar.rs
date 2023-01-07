@@ -50,7 +50,7 @@ impl IndexMut<usize> for Scalar29 {
 
 /// u32 * u32 = u64 multiply helper
 #[inline(always)]
-fn m(x: u32, y: u32) -> u64 {
+const fn m(x: u32, y: u32) -> u64 {
     (x as u64) * (y as u64)
 }
 
@@ -60,66 +60,179 @@ impl Scalar29 {
 
     /// Unpack a 32 byte / 256 bit scalar into 9 29-bit limbs.
     #[rustfmt::skip] // keep alignment of s[*] calculations
-    pub fn from_bytes(bytes: &[u8; 32]) -> Scalar29 {
-        let mut words = [0u32; 8];
-        for i in 0..8 {
-            for j in 0..4 {
-                words[i] |= (bytes[(i * 4) + j] as u32) << (j * 8);
-            }
-        }
+    pub const fn from_bytes(bytes: &[u8; 32]) -> Scalar29 {
+        let words : [u32; 8] = [
+            (bytes[(0 * 4) + 0] as u32) << (0 * 8)
+            | (bytes[(0 * 4) + 1] as u32) << (1 * 8)
+            | (bytes[(0 * 4) + 2] as u32) << (2 * 8)
+            | (bytes[(0 * 4) + 3] as u32) << (3 * 8),
 
+            (bytes[(1 * 4) + 0] as u32) << (0 * 8)
+            | (bytes[(1 * 4) + 1] as u32) << (1 * 8)
+            | (bytes[(1 * 4) + 2] as u32) << (2 * 8)
+            | (bytes[(1 * 4) + 3] as u32) << (3 * 8),
+
+            (bytes[(2 * 4) + 0] as u32) << (0 * 8)
+            | (bytes[(2 * 4) + 1] as u32) << (1 * 8)
+            | (bytes[(2 * 4) + 2] as u32) << (2 * 8)
+            | (bytes[(2 * 4) + 3] as u32) << (3 * 8),
+
+            (bytes[(3 * 4) + 0] as u32) << (0 * 8)
+            | (bytes[(3 * 4) + 1] as u32) << (1 * 8)
+            | (bytes[(3 * 4) + 2] as u32) << (2 * 8)
+            | (bytes[(3 * 4) + 3] as u32) << (3 * 8),
+
+            (bytes[(4 * 4) + 0] as u32) << (0 * 8)
+            | (bytes[(4 * 4) + 1] as u32) << (1 * 8)
+            | (bytes[(4 * 4) + 2] as u32) << (2 * 8)
+            | (bytes[(4 * 4) + 3] as u32) << (3 * 8),
+
+            (bytes[(5 * 4) + 0] as u32) << (0 * 8)
+            | (bytes[(5 * 4) + 1] as u32) << (1 * 8)
+            | (bytes[(5 * 4) + 2] as u32) << (2 * 8)
+            | (bytes[(5 * 4) + 3] as u32) << (3 * 8),
+
+            (bytes[(6 * 4) + 0] as u32) << (0 * 8)
+            | (bytes[(6 * 4) + 1] as u32) << (1 * 8)
+            | (bytes[(6 * 4) + 2] as u32) << (2 * 8)
+            | (bytes[(6 * 4) + 3] as u32) << (3 * 8),
+
+            (bytes[(7 * 4) + 0] as u32) << (0 * 8)
+            | (bytes[(7 * 4) + 1] as u32) << (1 * 8)
+            | (bytes[(7 * 4) + 2] as u32) << (2 * 8)
+            | (bytes[(7 * 4) + 3] as u32) << (3 * 8),
+
+        ];
         let mask = (1u32 << 29) - 1;
         let top_mask = (1u32 << 24) - 1;
-        let mut s = Scalar29::ZERO;
 
-        s[0] =   words[0]                            & mask;
-        s[1] = ((words[0] >> 29) | (words[1] <<  3)) & mask;
-        s[2] = ((words[1] >> 26) | (words[2] <<  6)) & mask;
-        s[3] = ((words[2] >> 23) | (words[3] <<  9)) & mask;
-        s[4] = ((words[3] >> 20) | (words[4] << 12)) & mask;
-        s[5] = ((words[4] >> 17) | (words[5] << 15)) & mask;
-        s[6] = ((words[5] >> 14) | (words[6] << 18)) & mask;
-        s[7] = ((words[6] >> 11) | (words[7] << 21)) & mask;
-        s[8] =  (words[7] >>  8)                     & top_mask;
-
-        s
+        let s :[u32; 9] = [
+              words[0]                            & mask,
+            ((words[0] >> 29) | (words[1] <<  3)) & mask,
+            ((words[1] >> 26) | (words[2] <<  6)) & mask,
+            ((words[2] >> 23) | (words[3] <<  9)) & mask,
+            ((words[3] >> 20) | (words[4] << 12)) & mask,
+            ((words[4] >> 17) | (words[5] << 15)) & mask,
+            ((words[5] >> 14) | (words[6] << 18)) & mask,
+            ((words[6] >> 11) | (words[7] << 21)) & mask,
+             (words[7] >>  8)                     & top_mask,
+        ];
+        Scalar29(s)
     }
 
     /// Reduce a 64 byte / 512 bit scalar mod l.
     #[rustfmt::skip] // keep alignment of lo[*] calculations
-    pub fn from_bytes_wide(bytes: &[u8; 64]) -> Scalar29 {
-        let mut words = [0u32; 16];
-        for i in 0..16 {
-            for j in 0..4 {
-                words[i] |= (bytes[(i * 4) + j] as u32) << (j * 8);
-            }
-        }
+    pub const fn from_bytes_wide(bytes: &[u8; 64]) -> Scalar29 {
+        let words :[u32; 16] =
+        [
+              (bytes[(0 * 4) + 0] as u32) << (0 * 8)
+            | (bytes[(0 * 4) + 1] as u32) << (1 * 8)
+            | (bytes[(0 * 4) + 2] as u32) << (2 * 8)
+            | (bytes[(0 * 4) + 3] as u32) << (3 * 8), // [ 0]
+
+              (bytes[(1 * 4) + 0] as u32) << (0 * 8)
+            | (bytes[(1 * 4) + 1] as u32) << (1 * 8)
+            | (bytes[(1 * 4) + 2] as u32) << (2 * 8)
+            | (bytes[(1 * 4) + 3] as u32) << (3 * 8), // [ 1]
+
+              (bytes[(2 * 4) + 0] as u32) << (0 * 8)
+            | (bytes[(2 * 4) + 1] as u32) << (1 * 8)
+            | (bytes[(2 * 4) + 2] as u32) << (2 * 8)
+            | (bytes[(2 * 4) + 3] as u32) << (3 * 8), // [ 2]
+
+              (bytes[(3 * 4) + 0] as u32) << (0 * 8)
+            | (bytes[(3 * 4) + 1] as u32) << (1 * 8)
+            | (bytes[(3 * 4) + 2] as u32) << (2 * 8)
+            | (bytes[(3 * 4) + 3] as u32) << (3 * 8), // [ 3]
+
+              (bytes[(4 * 4) + 0] as u32) << (0 * 8)
+            | (bytes[(4 * 4) + 1] as u32) << (1 * 8)
+            | (bytes[(4 * 4) + 2] as u32) << (2 * 8)
+            | (bytes[(4 * 4) + 3] as u32) << (3 * 8), // [ 4]
+
+              (bytes[(5 * 4) + 0] as u32) << (0 * 8)
+            | (bytes[(5 * 4) + 1] as u32) << (1 * 8)
+            | (bytes[(5 * 4) + 2] as u32) << (2 * 8)
+            | (bytes[(5 * 4) + 3] as u32) << (3 * 8), // [ 5]
+
+              (bytes[(6 * 4) + 0] as u32) << (0 * 8)
+            | (bytes[(6 * 4) + 1] as u32) << (1 * 8)
+            | (bytes[(6 * 4) + 2] as u32) << (2 * 8)
+            | (bytes[(6 * 4) + 3] as u32) << (3 * 8), // [ 6]
+
+              (bytes[(7 * 4) + 0] as u32) << (0 * 8)
+            | (bytes[(7 * 4) + 1] as u32) << (1 * 8)
+            | (bytes[(7 * 4) + 2] as u32) << (2 * 8)
+            | (bytes[(7 * 4) + 3] as u32) << (3 * 8), // [ 7]
+
+              (bytes[(8 * 4) + 0] as u32) << (0 * 8)
+            | (bytes[(8 * 4) + 1] as u32) << (1 * 8)
+            | (bytes[(8 * 4) + 2] as u32) << (2 * 8)
+            | (bytes[(8 * 4) + 3] as u32) << (3 * 8), // [ 8]
+
+              (bytes[(9 * 4) + 0] as u32) << (0 * 8)
+            | (bytes[(9 * 4) + 1] as u32) << (1 * 8)
+            | (bytes[(9 * 4) + 2] as u32) << (2 * 8)
+            | (bytes[(9 * 4) + 3] as u32) << (3 * 8), // [ 9]
+
+              (bytes[(10 * 4) + 0] as u32) << (0 * 8)
+            | (bytes[(10 * 4) + 1] as u32) << (1 * 8)
+            | (bytes[(10 * 4) + 2] as u32) << (2 * 8)
+            | (bytes[(10 * 4) + 3] as u32) << (3 * 8), // [10]
+
+              (bytes[(11 * 4) + 0] as u32) << (0 * 8)
+            | (bytes[(11 * 4) + 1] as u32) << (1 * 8)
+            | (bytes[(11 * 4) + 2] as u32) << (2 * 8)
+            | (bytes[(11 * 4) + 3] as u32) << (3 * 8), // [11]
+
+              (bytes[(12 * 4) + 0] as u32) << (0 * 8)
+            | (bytes[(12 * 4) + 1] as u32) << (1 * 8)
+            | (bytes[(12 * 4) + 2] as u32) << (2 * 8)
+            | (bytes[(12 * 4) + 3] as u32) << (3 * 8), // [12]
+
+              (bytes[(13 * 4) + 0] as u32) << (0 * 8)
+            | (bytes[(13 * 4) + 1] as u32) << (1 * 8)
+            | (bytes[(13 * 4) + 2] as u32) << (2 * 8)
+            | (bytes[(13 * 4) + 3] as u32) << (3 * 8), // [13]
+
+              (bytes[(14 * 4) + 0] as u32) << (0 * 8)
+            | (bytes[(14 * 4) + 1] as u32) << (1 * 8)
+            | (bytes[(14 * 4) + 2] as u32) << (2 * 8)
+            | (bytes[(14 * 4) + 3] as u32) << (3 * 8), // [14]
+
+              (bytes[(15 * 4) + 0] as u32) << (0 * 8)
+            | (bytes[(15 * 4) + 1] as u32) << (1 * 8)
+            | (bytes[(15 * 4) + 2] as u32) << (2 * 8)
+            | (bytes[(15 * 4) + 3] as u32) << (3 * 8), // [15]
+        ];
 
         let mask = (1u32 << 29) - 1;
-        let mut lo = Scalar29::ZERO;
-        let mut hi = Scalar29::ZERO;
+        let lo :[u32; 9] = [
+              words[ 0]                             & mask,
+            ((words[ 0] >> 29) | (words[ 1] <<  3)) & mask,
+            ((words[ 1] >> 26) | (words[ 2] <<  6)) & mask,
+            ((words[ 2] >> 23) | (words[ 3] <<  9)) & mask,
+            ((words[ 3] >> 20) | (words[ 4] << 12)) & mask,
+            ((words[ 4] >> 17) | (words[ 5] << 15)) & mask,
+            ((words[ 5] >> 14) | (words[ 6] << 18)) & mask,
+            ((words[ 6] >> 11) | (words[ 7] << 21)) & mask,
+            ((words[ 7] >>  8) | (words[ 8] << 24)) & mask,
+        ];
 
-        lo[0] =   words[ 0]                             & mask;
-        lo[1] = ((words[ 0] >> 29) | (words[ 1] <<  3)) & mask;
-        lo[2] = ((words[ 1] >> 26) | (words[ 2] <<  6)) & mask;
-        lo[3] = ((words[ 2] >> 23) | (words[ 3] <<  9)) & mask;
-        lo[4] = ((words[ 3] >> 20) | (words[ 4] << 12)) & mask;
-        lo[5] = ((words[ 4] >> 17) | (words[ 5] << 15)) & mask;
-        lo[6] = ((words[ 5] >> 14) | (words[ 6] << 18)) & mask;
-        lo[7] = ((words[ 6] >> 11) | (words[ 7] << 21)) & mask;
-        lo[8] = ((words[ 7] >>  8) | (words[ 8] << 24)) & mask;
-        hi[0] = ((words[ 8] >>  5) | (words[ 9] << 27)) & mask;
-        hi[1] =  (words[ 9] >>  2)                      & mask;
-        hi[2] = ((words[ 9] >> 31) | (words[10] <<  1)) & mask;
-        hi[3] = ((words[10] >> 28) | (words[11] <<  4)) & mask;
-        hi[4] = ((words[11] >> 25) | (words[12] <<  7)) & mask;
-        hi[5] = ((words[12] >> 22) | (words[13] << 10)) & mask;
-        hi[6] = ((words[13] >> 19) | (words[14] << 13)) & mask;
-        hi[7] = ((words[14] >> 16) | (words[15] << 16)) & mask;
-        hi[8] =   words[15] >> 13                             ;
+        let hi :[u32; 9] = [
+            ((words[ 8] >>  5) | (words[ 9] << 27)) & mask,
+             (words[ 9] >>  2)                      & mask,
+            ((words[ 9] >> 31) | (words[10] <<  1)) & mask,
+            ((words[10] >> 28) | (words[11] <<  4)) & mask,
+            ((words[11] >> 25) | (words[12] <<  7)) & mask,
+            ((words[12] >> 22) | (words[13] << 10)) & mask,
+            ((words[13] >> 19) | (words[14] << 13)) & mask,
+            ((words[14] >> 16) | (words[15] << 16)) & mask,
+              words[15] >> 13                             ,
+        ];
 
-        lo = Scalar29::montgomery_mul(&lo, &constants::R);  // (lo * R) / R = lo
-        hi = Scalar29::montgomery_mul(&hi, &constants::RR); // (hi * R^2) / R = hi * R
+        let lo = Scalar29::montgomery_mul(&Scalar29(lo), &constants::R);  // (lo * R) / R = lo
+        let hi = Scalar29::montgomery_mul(&Scalar29(hi), &constants::RR); // (hi * R^2) / R = hi * R
 
         Scalar29::add(&hi, &lo) // (hi * R) + lo
     }
@@ -127,82 +240,156 @@ impl Scalar29 {
     /// Pack the limbs of this `Scalar29` into 32 bytes.
     #[rustfmt::skip] // keep alignment of s[*] calculations
     #[allow(clippy::identity_op)]
-    pub fn as_bytes(&self) -> [u8; 32] {
-        let mut s = [0u8; 32];
+    pub const fn as_bytes(&self) -> [u8; 32] {
+        let s: [u8; 32] = [
 
-        s[ 0] =  (self.0[0] >>  0)                      as u8;
-        s[ 1] =  (self.0[0] >>  8)                      as u8;
-        s[ 2] =  (self.0[0] >> 16)                      as u8;
-        s[ 3] = ((self.0[0] >> 24) | (self.0[1] << 5))  as u8;
-        s[ 4] =  (self.0[1] >>  3)                      as u8;
-        s[ 5] =  (self.0[1] >> 11)                      as u8;
-        s[ 6] =  (self.0[1] >> 19)                      as u8;
-        s[ 7] = ((self.0[1] >> 27) | (self.0[2] << 2))  as u8;
-        s[ 8] =  (self.0[2] >>  6)                      as u8;
-        s[ 9] =  (self.0[2] >> 14)                      as u8;
-        s[10] = ((self.0[2] >> 22) | (self.0[3] << 7))  as u8;
-        s[11] =  (self.0[3] >>  1)                      as u8;
-        s[12] =  (self.0[3] >>  9)                      as u8;
-        s[13] =  (self.0[3] >> 17)                      as u8;
-        s[14] = ((self.0[3] >> 25) | (self.0[4] << 4))  as u8;
-        s[15] =  (self.0[4] >>  4)                      as u8;
-        s[16] =  (self.0[4] >> 12)                      as u8;
-        s[17] =  (self.0[4] >> 20)                      as u8;
-        s[18] = ((self.0[4] >> 28) | (self.0[5] << 1))  as u8;
-        s[19] =  (self.0[5] >>  7)                      as u8;
-        s[20] =  (self.0[5] >> 15)                      as u8;
-        s[21] = ((self.0[5] >> 23) | (self.0[6] << 6))  as u8;
-        s[22] =  (self.0[6] >>  2)                      as u8;
-        s[23] =  (self.0[6] >> 10)                      as u8;
-        s[24] =  (self.0[6] >> 18)                      as u8;
-        s[25] = ((self.0[6] >> 26) | (self.0[7] << 3))  as u8;
-        s[26] =  (self.0[7] >>  5)                      as u8;
-        s[27] =  (self.0[7] >> 13)                      as u8;
-        s[28] =  (self.0[7] >> 21)                      as u8;
-        s[29] =  (self.0[8] >>  0)                      as u8;
-        s[30] =  (self.0[8] >>  8)                      as u8;
-        s[31] =  (self.0[8] >> 16)                      as u8;
-
+          (self.0[0] >>  0)                      as u8, // [ 0]
+          (self.0[0] >>  8)                      as u8, // [ 1]
+          (self.0[0] >> 16)                      as u8, // [ 2]
+         ((self.0[0] >> 24) | (self.0[1] << 5))  as u8, // [ 3]
+          (self.0[1] >>  3)                      as u8, // [ 4]
+          (self.0[1] >> 11)                      as u8, // [ 5]
+          (self.0[1] >> 19)                      as u8, // [ 6]
+         ((self.0[1] >> 27) | (self.0[2] << 2))  as u8, // [ 7]
+          (self.0[2] >>  6)                      as u8, // [ 8]
+          (self.0[2] >> 14)                      as u8, // [ 9]
+         ((self.0[2] >> 22) | (self.0[3] << 7))  as u8, // [10]
+          (self.0[3] >>  1)                      as u8, // [11]
+          (self.0[3] >>  9)                      as u8, // [12]
+          (self.0[3] >> 17)                      as u8, // [13]
+         ((self.0[3] >> 25) | (self.0[4] << 4))  as u8, // [14]
+          (self.0[4] >>  4)                      as u8, // [15]
+          (self.0[4] >> 12)                      as u8, // [16]
+          (self.0[4] >> 20)                      as u8, // [17]
+         ((self.0[4] >> 28) | (self.0[5] << 1))  as u8, // [18]
+          (self.0[5] >>  7)                      as u8, // [19]
+          (self.0[5] >> 15)                      as u8, // [20]
+         ((self.0[5] >> 23) | (self.0[6] << 6))  as u8, // [21]
+          (self.0[6] >>  2)                      as u8, // [22]
+          (self.0[6] >> 10)                      as u8, // [23]
+          (self.0[6] >> 18)                      as u8, // [24]
+         ((self.0[6] >> 26) | (self.0[7] << 3))  as u8, // [25]
+          (self.0[7] >>  5)                      as u8, // [26]
+          (self.0[7] >> 13)                      as u8, // [27]
+          (self.0[7] >> 21)                      as u8, // [28]
+          (self.0[8] >>  0)                      as u8, // [29]
+          (self.0[8] >>  8)                      as u8, // [30]
+          (self.0[8] >> 16)                      as u8, // [31]
+        ];
         s
     }
 
     /// Compute `a + b` (mod l).
-    pub fn add(a: &Scalar29, b: &Scalar29) -> Scalar29 {
-        let mut sum = Scalar29::ZERO;
+    pub const fn add(a: &Scalar29, b: &Scalar29) -> Scalar29 {
+        let a = a.0;
+        let b = b.0;
+
+        let mut sum: [u32; 9] = [0; 9];
         let mask = (1u32 << 29) - 1;
 
         // a + b
         let mut carry: u32 = 0;
-        for i in 0..9 {
-            carry = a[i] + b[i] + (carry >> 29);
-            sum[i] = carry & mask;
-        }
+        carry = a[0] + b[0] + (carry >> 29);
+        sum[0] = carry & mask;
+
+        carry = a[1] + b[1] + (carry >> 29);
+        sum[1] = carry & mask;
+
+        carry = a[2] + b[2] + (carry >> 29);
+        sum[2] = carry & mask;
+
+        carry = a[3] + b[3] + (carry >> 29);
+        sum[3] = carry & mask;
+
+        carry = a[4] + b[4] + (carry >> 29);
+        sum[4] = carry & mask;
+
+        carry = a[5] + b[5] + (carry >> 29);
+        sum[5] = carry & mask;
+
+        carry = a[6] + b[6] + (carry >> 29);
+        sum[6] = carry & mask;
+
+        carry = a[7] + b[7] + (carry >> 29);
+        sum[7] = carry & mask;
+
+        carry = a[8] + b[8] + (carry >> 29);
+        sum[8] = carry & mask;
 
         // subtract l if the sum is >= l
-        Scalar29::sub(&sum, &constants::L)
+        Scalar29::sub(&Scalar29(sum), &constants::L)
     }
 
     /// Compute `a - b` (mod l).
-    pub fn sub(a: &Scalar29, b: &Scalar29) -> Scalar29 {
-        let mut difference = Scalar29::ZERO;
+    pub const fn sub(a: &Scalar29, b: &Scalar29) -> Scalar29 {
+        let a = a.0;
+        let b = b.0;
+        let l = constants::L.0;
+        let mut difference: [u32; 9] = [0; 9];
         let mask = (1u32 << 29) - 1;
 
         // a - b
         let mut borrow: u32 = 0;
-        for i in 0..9 {
-            borrow = a[i].wrapping_sub(b[i] + (borrow >> 31));
-            difference[i] = borrow & mask;
-        }
+
+        borrow = a[0].wrapping_sub(b[0] + (borrow >> 31));
+        difference[0] = borrow & mask;
+
+        borrow = a[1].wrapping_sub(b[1] + (borrow >> 31));
+        difference[1] = borrow & mask;
+
+        borrow = a[2].wrapping_sub(b[2] + (borrow >> 31));
+        difference[2] = borrow & mask;
+
+        borrow = a[3].wrapping_sub(b[3] + (borrow >> 31));
+        difference[3] = borrow & mask;
+
+        borrow = a[4].wrapping_sub(b[4] + (borrow >> 31));
+        difference[4] = borrow & mask;
+
+        borrow = a[5].wrapping_sub(b[5] + (borrow >> 31));
+        difference[5] = borrow & mask;
+
+        borrow = a[6].wrapping_sub(b[6] + (borrow >> 31));
+        difference[6] = borrow & mask;
+
+        borrow = a[7].wrapping_sub(b[7] + (borrow >> 31));
+        difference[7] = borrow & mask;
+
+        borrow = a[8].wrapping_sub(b[8] + (borrow >> 31));
+        difference[8] = borrow & mask;
 
         // conditionally add l if the difference is negative
         let underflow_mask = ((borrow >> 31) ^ 1).wrapping_sub(1);
         let mut carry: u32 = 0;
-        for i in 0..9 {
-            carry = (carry >> 29) + difference[i] + (constants::L[i] & underflow_mask);
-            difference[i] = carry & mask;
-        }
 
-        difference
+        carry = (carry >> 29) + difference[0] + (l[0] & underflow_mask);
+        difference[0] = carry & mask;
+
+        carry = (carry >> 29) + difference[1] + (l[1] & underflow_mask);
+        difference[1] = carry & mask;
+
+        carry = (carry >> 29) + difference[2] + (l[2] & underflow_mask);
+        difference[2] = carry & mask;
+
+        carry = (carry >> 29) + difference[3] + (l[3] & underflow_mask);
+        difference[3] = carry & mask;
+
+        carry = (carry >> 29) + difference[4] + (l[4] & underflow_mask);
+        difference[4] = carry & mask;
+
+        carry = (carry >> 29) + difference[5] + (l[5] & underflow_mask);
+        difference[5] = carry & mask;
+
+        carry = (carry >> 29) + difference[6] + (l[6] & underflow_mask);
+        difference[6] = carry & mask;
+
+        carry = (carry >> 29) + difference[7] + (l[7] & underflow_mask);
+        difference[7] = carry & mask;
+
+        carry = (carry >> 29) + difference[8] + (l[8] & underflow_mask);
+        difference[8] = carry & mask;
+
+        Scalar29(difference)
     }
 
     /// Compute `a * b`.
@@ -210,7 +397,9 @@ impl Scalar29 {
     /// This is implemented with a one-level refined Karatsuba decomposition
     #[inline(always)]
     #[rustfmt::skip] // keep alignment of z[*] calculations
-    pub (crate) fn mul_internal(a: &Scalar29, b: &Scalar29) -> [u64; 17] {
+    pub (crate) const fn mul_internal(a: &Scalar29, b: &Scalar29) -> [u64; 17] {
+        let a = a.0;
+        let b = b.0;
         let mut z = [0u64; 17];
 
         z[0] = m(a[0], b[0]);                                                                 // c00
@@ -268,7 +457,8 @@ impl Scalar29 {
     /// Compute `a^2`.
     #[inline(always)]
     #[rustfmt::skip] // keep alignment of calculations
-    fn square_internal(a: &Scalar29) -> [u64; 17] {
+    const fn square_internal(a: &Scalar29) -> [u64; 17] {
+        let a = a.0;
         let aa = [
             a[0] * 2,
             a[1] * 2,
@@ -304,22 +494,22 @@ impl Scalar29 {
     /// Compute `limbs/R` (mod l), where R is the Montgomery modulus 2^261
     #[inline(always)]
     #[rustfmt::skip] // keep alignment of part1() and part2() computations
-    pub (crate) fn montgomery_reduce(limbs: &[u64; 17]) -> Scalar29 {
+    pub (crate) const fn montgomery_reduce(limbs: &[u64; 17]) -> Scalar29 {
 
         #[inline(always)]
-        fn part1(sum: u64) -> (u64, u32) {
+        const fn part1(sum: u64) -> (u64, u32) {
             let p = (sum as u32).wrapping_mul(constants::LFACTOR) & ((1u32 << 29) - 1);
-            ((sum + m(p,constants::L[0])) >> 29, p)
+            ((sum + m(p,constants::L.0[0])) >> 29, p)
         }
 
         #[inline(always)]
-        fn part2(sum: u64) -> (u64, u32) {
+        const fn part2(sum: u64) -> (u64, u32) {
             let w = (sum as u32) & ((1u32 << 29) - 1);
             (sum >> 29, w)
         }
 
         // note: l5,l6,l7 are zero, so their multiplies can be skipped
-        let l = &constants::L;
+        let l = &constants::L.0;
 
         // the first half computes the Montgomery adjustment factor n, and begins adding n*l to make limbs divisible by R
         let (carry, n0) = part1(        limbs[ 0]);
@@ -344,12 +534,12 @@ impl Scalar29 {
         let         r8 = carry as u32;
 
         // result may be >= l, so attempt to subtract l
-        Scalar29::sub(&Scalar29([r0,r1,r2,r3,r4,r5,r6,r7,r8]), l)
+        Scalar29::sub(&Scalar29([r0,r1,r2,r3,r4,r5,r6,r7,r8]), &constants::L)
     }
 
     /// Compute `a * b` (mod l).
     #[inline(never)]
-    pub fn mul(a: &Scalar29, b: &Scalar29) -> Scalar29 {
+    pub const fn mul(a: &Scalar29, b: &Scalar29) -> Scalar29 {
         let ab = Scalar29::montgomery_reduce(&Scalar29::mul_internal(a, b));
         Scalar29::montgomery_reduce(&Scalar29::mul_internal(&ab, &constants::RR))
     }
@@ -357,36 +547,45 @@ impl Scalar29 {
     /// Compute `a^2` (mod l).
     #[inline(never)]
     #[allow(dead_code)] // XXX we don't expose square() via the Scalar API
-    pub fn square(&self) -> Scalar29 {
+    pub const fn square(&self) -> Scalar29 {
         let aa = Scalar29::montgomery_reduce(&Scalar29::square_internal(self));
         Scalar29::montgomery_reduce(&Scalar29::mul_internal(&aa, &constants::RR))
     }
 
     /// Compute `(a * b) / R` (mod l), where R is the Montgomery modulus 2^261
     #[inline(never)]
-    pub fn montgomery_mul(a: &Scalar29, b: &Scalar29) -> Scalar29 {
+    pub const fn montgomery_mul(a: &Scalar29, b: &Scalar29) -> Scalar29 {
         Scalar29::montgomery_reduce(&Scalar29::mul_internal(a, b))
     }
 
     /// Compute `(a^2) / R` (mod l) in Montgomery form, where R is the Montgomery modulus 2^261
     #[inline(never)]
-    pub fn montgomery_square(&self) -> Scalar29 {
+    pub const fn montgomery_square(&self) -> Scalar29 {
         Scalar29::montgomery_reduce(&Scalar29::square_internal(self))
     }
 
     /// Puts a Scalar29 in to Montgomery form, i.e. computes `a*R (mod l)`
     #[inline(never)]
-    pub fn as_montgomery(&self) -> Scalar29 {
+    pub const fn as_montgomery(&self) -> Scalar29 {
         Scalar29::montgomery_mul(self, &constants::RR)
     }
 
     /// Takes a Scalar29 out of Montgomery form, i.e. computes `a/R (mod l)`
     #[allow(clippy::wrong_self_convention)]
-    pub fn from_montgomery(&self) -> Scalar29 {
-        let mut limbs = [0u64; 17];
-        for i in 0..9 {
-            limbs[i] = self[i] as u64;
-        }
+    pub const fn from_montgomery(&self) -> Scalar29 {
+        let self_limbs = self.0;
+        let limbs :[u64; 17] = [
+            self_limbs[0] as u64,
+            self_limbs[1] as u64,
+            self_limbs[2] as u64,
+            self_limbs[3] as u64,
+            self_limbs[4] as u64,
+            self_limbs[5] as u64,
+            self_limbs[6] as u64,
+            self_limbs[7] as u64,
+            self_limbs[8] as u64,
+            0, 0, 0, 0, 0, 0, 0, 0,
+        ];
         Scalar29::montgomery_reduce(&limbs)
     }
 }
