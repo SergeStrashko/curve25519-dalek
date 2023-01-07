@@ -122,7 +122,7 @@ impl Scalar29 {
 
     /// Reduce a 64 byte / 512 bit scalar mod l.
     #[rustfmt::skip] // keep alignment of lo[*] calculations
-    pub fn from_bytes_wide(bytes: &[u8; 64]) -> Scalar29 {
+    pub const fn from_bytes_wide(bytes: &[u8; 64]) -> Scalar29 {
         let words :[u32; 16] =
         [
               (bytes[(0 * 4) + 0] as u32) << (0 * 8)
@@ -560,7 +560,7 @@ impl Scalar29 {
 
     /// Compute `(a^2) / R` (mod l) in Montgomery form, where R is the Montgomery modulus 2^261
     #[inline(never)]
-    pub fn montgomery_square(&self) -> Scalar29 {
+    pub const fn montgomery_square(&self) -> Scalar29 {
         Scalar29::montgomery_reduce(&Scalar29::square_internal(self))
     }
 
