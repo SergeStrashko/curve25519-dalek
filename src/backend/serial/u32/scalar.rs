@@ -539,7 +539,7 @@ impl Scalar29 {
 
     /// Compute `a * b` (mod l).
     #[inline(never)]
-    pub fn mul(a: &Scalar29, b: &Scalar29) -> Scalar29 {
+    pub const fn mul(a: &Scalar29, b: &Scalar29) -> Scalar29 {
         let ab = Scalar29::montgomery_reduce(&Scalar29::mul_internal(a, b));
         Scalar29::montgomery_reduce(&Scalar29::mul_internal(&ab, &constants::RR))
     }
@@ -547,7 +547,7 @@ impl Scalar29 {
     /// Compute `a^2` (mod l).
     #[inline(never)]
     #[allow(dead_code)] // XXX we don't expose square() via the Scalar API
-    pub fn square(&self) -> Scalar29 {
+    pub const fn square(&self) -> Scalar29 {
         let aa = Scalar29::montgomery_reduce(&Scalar29::square_internal(self));
         Scalar29::montgomery_reduce(&Scalar29::mul_internal(&aa, &constants::RR))
     }
@@ -566,17 +566,26 @@ impl Scalar29 {
 
     /// Puts a Scalar29 in to Montgomery form, i.e. computes `a*R (mod l)`
     #[inline(never)]
-    pub fn as_montgomery(&self) -> Scalar29 {
+    pub const fn as_montgomery(&self) -> Scalar29 {
         Scalar29::montgomery_mul(self, &constants::RR)
     }
 
     /// Takes a Scalar29 out of Montgomery form, i.e. computes `a/R (mod l)`
     #[allow(clippy::wrong_self_convention)]
-    pub fn from_montgomery(&self) -> Scalar29 {
-        let mut limbs = [0u64; 17];
-        for i in 0..9 {
-            limbs[i] = self[i] as u64;
-        }
+    pub const fn from_montgomery(&self) -> Scalar29 {
+        let self_limbs = self.0;
+        let limbs :[u64; 17] = [
+            self_limbs[0] as u64,
+            self_limbs[1] as u64,
+            self_limbs[2] as u64,
+            self_limbs[3] as u64,
+            self_limbs[4] as u64,
+            self_limbs[5] as u64,
+            self_limbs[6] as u64,
+            self_limbs[7] as u64,
+            self_limbs[8] as u64,
+            0, 0, 0, 0, 0, 0, 0, 0,
+        ];
         Scalar29::montgomery_reduce(&limbs)
     }
 }
