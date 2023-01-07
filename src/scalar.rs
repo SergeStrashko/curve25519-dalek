@@ -241,7 +241,7 @@ impl Scalar {
     /// modulo the group order \\( \ell \\).
     pub fn from_bytes_mod_order(bytes: [u8; 32]) -> Scalar {
         // Temporarily allow s_unreduced.bytes > 2^255 ...
-        let s_unreduced = Scalar { inner: UnpackedScalar::from_bytes(&bytes) };
+        let s_unreduced = Scalar::from_bytes_unchecked(bytes);
 
         // Then reduce mod the group order and return the reduced representative.
         let s = s_unreduced.reduce();
