@@ -45,7 +45,7 @@ impl Index<usize> for Scalar52 {
 }
 
 impl IndexMut<usize> for Scalar52 {
-     fn index_mut(&mut self, _index: usize) -> &mut u64 {
+    fn index_mut(&mut self, _index: usize) -> &mut u64 {
         &mut (self.0[_index])
     }
 }
