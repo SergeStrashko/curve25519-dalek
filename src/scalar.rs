@@ -407,7 +407,7 @@ impl Serialize for Scalar {
     {
         use serde::ser::SerializeTuple;
         let mut tup = serializer.serialize_tuple(32)?;
-        for byte in self.as_bytes().iter() {
+        for byte in self.to_bytes().iter() {
             tup.serialize_element(byte)?;
         }
         tup.end()
@@ -1685,7 +1685,7 @@ mod test {
         assert_eq!(encoded.len(), 32);
 
         // Check that the encoding itself matches the usual one
-        assert_eq!(X, bincode::deserialize(X.as_bytes()).unwrap(),);
+        assert_eq!(X, bincode::deserialize(&X.to_bytes()).unwrap(),);
     }
 
     #[cfg(all(debug_assertions, feature = "alloc"))]
