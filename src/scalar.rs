@@ -215,27 +215,14 @@ cfg_if! {
 /// represents an element of \\(\mathbb Z / \ell\\).
 #[allow(clippy::derive_hash_xor_eq)]
 #[derive(Copy, Clone)]
-pub struct Scalar {
-    /// `bytes` is a little-endian byte encoding of an integer representing a scalar modulo the
-    /// group order.
-    ///
-    /// # Invariant
-    ///
-    /// The integer representing this scalar must be bounded above by \\(2\^{255}\\), or
-    /// equivalently the high bit of `bytes[31]` must be zero.
-    ///
-    /// This ensures that there is room for a carry bit when computing a NAF representation.
-    //
-    // XXX This is pub(crate) so we can write literal constants.  If const fns were stable, we could
-    //     make the Scalar constructors const fns and use those instead.
-    // pub(crate) bytes: [u8; 32],
-    pub(crate) inner : UnpackedScalar
-}
+pub struct Scalar(UnpackedScalar);
+
 impl Hash for Scalar {
     fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
         self.to_bytes().hash(state)
     }
 }
+
 impl Scalar {
     /// Construct a `Scalar` by reducing a 256-bit little-endian integer
     /// modulo the group order \\( \ell \\).
@@ -253,7 +240,7 @@ impl Scalar {
     /// Construct a `Scalar` by reducing a 512-bit little-endian integer
     /// modulo the group order \\( \ell \\).
     pub fn from_bytes_mod_order_wide(input: &[u8; 64]) -> Scalar {
-        UnpackedScalar::from_bytes_wide(input).pack()
+        Scalar(UnpackedScalar::from_bytes_wide(input))
     }
 
     /// Attempt to construct a `Scalar` from a canonical byte representation.
@@ -281,7 +268,7 @@ impl Scalar {
     }
     /// inner function to create Scalar as is from bytes without any checks.
     pub(crate) const fn from_bytes_unchecked(bytes: [u8;32]) -> Scalar {
-        UnpackedScalar::from_bytes(&bytes).pack()
+        Scalar(UnpackedScalar::from_bytes(&bytes))
     }
 }
 
@@ -305,18 +292,9 @@ impl ConstantTimeEq for Scalar {
     }
 }
 
-// impl Index<usize> for Scalar {
-//     type Output = u8;
-
-//     /// Index the bytes of the representative for this `Scalar`.  Mutation is not permitted.
-//     fn index(&self, _index: usize) -> &u8 {
-//         &(self.inner.as_bytes()[_index])
-//     }
-// }
-
 impl<'b> MulAssign<&'b Scalar> for Scalar {
     fn mul_assign(&mut self, _rhs: &'b Scalar) {
-        *self = UnpackedScalar::mul(&self.unpack(), &_rhs.unpack()).pack();
+        self.0 = UnpackedScalar::mul(&self.0, &_rhs.0)
     }
 }
 
@@ -325,7 +303,7 @@ define_mul_assign_variants!(LHS = Scalar, RHS = Scalar);
 impl<'a, 'b> Mul<&'b Scalar> for &'a Scalar {
     type Output = Scalar;
     fn mul(self, _rhs: &'b Scalar) -> Scalar {
-        UnpackedScalar::mul(&self.unpack(), &_rhs.unpack()).pack()
+        Scalar(UnpackedScalar::mul(&self.0, &_rhs.0))
     }
 }
 
@@ -348,10 +326,10 @@ impl<'a, 'b> Add<&'b Scalar> for &'a Scalar {
         // be reduced -- they might come from Scalar::from_bits.  So
         // after computing the sum, we explicitly reduce it mod l
         // before repacking.
-        let sum = UnpackedScalar::add(&self.unpack(), &_rhs.unpack());
+        let sum = UnpackedScalar::add(&self.0, &_rhs.0);
         let sum_R = UnpackedScalar::mul_internal(&sum, &constants::R);
         let sum_mod_l = UnpackedScalar::montgomery_reduce(&sum_R);
-        sum_mod_l.pack()
+        Scalar(sum_mod_l)
     }
 }
 
@@ -373,12 +351,12 @@ impl<'a, 'b> Sub<&'b Scalar> for &'a Scalar {
         // and produces reduced output. However, these inputs may not
         // be reduced -- they might come from Scalar::from_bits.  So
         // we explicitly reduce the inputs.
-        let self_R = UnpackedScalar::mul_internal(&self.unpack(), &constants::R);
+        let self_R = UnpackedScalar::mul_internal(&self.0, &constants::R);
         let self_mod_l = UnpackedScalar::montgomery_reduce(&self_R);
-        let rhs_R = UnpackedScalar::mul_internal(&rhs.unpack(), &constants::R);
+        let rhs_R = UnpackedScalar::mul_internal(&rhs.0, &constants::R);
         let rhs_mod_l = UnpackedScalar::montgomery_reduce(&rhs_R);
 
-        UnpackedScalar::sub(&self_mod_l, &rhs_mod_l).pack()
+        Scalar(UnpackedScalar::sub(&self_mod_l, &rhs_mod_l))
     }
 }
 
@@ -388,9 +366,9 @@ impl<'a> Neg for &'a Scalar {
     type Output = Scalar;
     #[allow(non_snake_case)]
     fn neg(self) -> Scalar {
-        let self_R = UnpackedScalar::mul_internal(&self.unpack(), &constants::R);
+        let self_R = UnpackedScalar::mul_internal(&self.0, &constants::R);
         let self_mod_l = UnpackedScalar::montgomery_reduce(&self_R);
-        UnpackedScalar::sub(&UnpackedScalar::ZERO, &self_mod_l).pack()
+        Scalar(UnpackedScalar::sub(&UnpackedScalar::ZERO, &self_mod_l))
     }
 }
 
@@ -410,7 +388,7 @@ impl ConditionallySelectable for Scalar {
         for i in 0..32 {
             bytes[i] = u8::conditional_select(&a_bytes[i], &b_bytes[i], choice);
         }
-        UnpackedScalar::from_bytes(&bytes).pack()
+        Scalar::from_bytes_unchecked(bytes)
 
     }
 }
@@ -505,7 +483,8 @@ impl From<u8> for Scalar {
     fn from(x: u8) -> Scalar {
         let mut s_bytes = [0u8; 32];
         s_bytes[0] = x;
-        UnpackedScalar::from_bytes(&s_bytes).pack()
+        Scalar::from_bytes_unchecked(s_bytes)
+
     }
 }
 
@@ -514,7 +493,8 @@ impl From<u16> for Scalar {
         let mut s_bytes = [0u8; 32];
         let x_bytes = x.to_le_bytes();
         s_bytes[0..x_bytes.len()].copy_from_slice(&x_bytes);
-        UnpackedScalar::from_bytes(&s_bytes).pack()
+        Scalar::from_bytes_unchecked(s_bytes)
+
     }
 }
 
@@ -523,7 +503,8 @@ impl From<u32> for Scalar {
         let mut s_bytes = [0u8; 32];
         let x_bytes = x.to_le_bytes();
         s_bytes[0..x_bytes.len()].copy_from_slice(&x_bytes);
-        UnpackedScalar::from_bytes(&s_bytes).pack()
+        Scalar::from_bytes_unchecked(s_bytes)
+
     }
 }
 
@@ -553,7 +534,8 @@ impl From<u64> for Scalar {
         let mut s_bytes = [0u8; 32];
         let x_bytes = x.to_le_bytes();
         s_bytes[0..x_bytes.len()].copy_from_slice(&x_bytes);
-        UnpackedScalar::from_bytes(&s_bytes).pack()
+        Scalar::from_bytes_unchecked(s_bytes)
+
     }
 }
 
@@ -562,32 +544,26 @@ impl From<u128> for Scalar {
         let mut s_bytes = [0u8; 32];
         let x_bytes = x.to_le_bytes();
         s_bytes[0..x_bytes.len()].copy_from_slice(&x_bytes);
-        UnpackedScalar::from_bytes(&s_bytes).pack()
+        Scalar::from_bytes_unchecked(s_bytes)
     }
 }
 
 impl Zeroize for Scalar {
     fn zeroize(&mut self) {
-        self.inner.zeroize();
+        self.0.zeroize();
     }
 }
 
 impl Scalar {
     /// The scalar \\( 0 \\).
-    pub const ZERO: Self = UnpackedScalar::from_bytes(&[0u8; 32]).pack();
+    pub const ZERO: Self = Scalar::from_bytes_unchecked([0u8; 32]);
 
     /// The scalar \\( 1 \\).
-    pub const ONE: Self = UnpackedScalar::from_bytes(&[
+    pub const ONE: Self = Scalar::from_bytes_unchecked(
+        [
             1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             0, 0, 0,
-        ]).pack();
-    /// basepoint order
-    pub const BASEPOINT_ORDER: Scalar = UnpackedScalar::from_bytes(&[
-                0xed, 0xd3, 0xf5, 0x5c, 0x1a, 0x63, 0x12, 0x58, 0xd6, 0x9c, 0xf7, 0xa2, 0xde, 0xf9, 0xde,
-                0x14, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                0x00, 0x10,
-            ]).pack();
-
+        ]);
 
     #[cfg(any(test, feature = "rand_core"))]
     /// Return a `Scalar` chosen uniformly at random using a user-provided RNG.
@@ -704,7 +680,7 @@ impl Scalar {
     /// assert!(s.to_bytes() == [0u8; 32]);
     /// ```
     pub fn to_bytes(&self) -> [u8; 32] {
-        self.inner.as_bytes()
+        self.0.as_bytes()
     }
 
 
@@ -746,7 +722,7 @@ impl Scalar {
     /// assert!(should_be_one == Scalar::ONE);
     /// ```
     pub fn invert(&self) -> Scalar {
-        self.inner.invert().pack()
+        Scalar(self.0.invert())
     }
 
     /// Given a slice of nonzero (possibly secret) `Scalar`s,
@@ -797,7 +773,7 @@ impl Scalar {
         use zeroize::Zeroizing;
 
         let n = inputs.len();
-        let one: UnpackedScalar = Scalar::ONE.unpack().as_montgomery();
+        let one: UnpackedScalar = Scalar::ONE.0.as_montgomery();
 
         // Place scratch storage in a Zeroizing wrapper to wipe it when
         // we pass out of scope.
@@ -805,7 +781,7 @@ impl Scalar {
         let mut scratch = Zeroizing::new(scratch_vec);
 
         // Keep an accumulator of all of the previous products
-        let mut acc = Scalar::ONE.unpack().as_montgomery();
+        let mut acc = Scalar::ONE.0.as_montgomery();
 
         // Pass through the input vector, recording the previous
         // products in the scratch space
@@ -814,25 +790,25 @@ impl Scalar {
 
             // Avoid unnecessary Montgomery multiplication in second pass by
             // keeping inputs in Montgomery form
-            let tmp = input.unpack().as_montgomery();
-            *input = tmp.pack();
+            let tmp = input.0.as_montgomery();
+            input.0 = tmp;
             acc = UnpackedScalar::montgomery_mul(&acc, &tmp);
         }
 
         // acc is nonzero iff all inputs are nonzero
-        debug_assert!(acc.pack() != Scalar::ZERO);
+        debug_assert!(Scalar(acc) != Scalar::ZERO);
 
         // Compute the inverse of all products
         acc = acc.montgomery_invert().from_montgomery();
 
         // We need to return the product of all inverses later
-        let ret = acc.pack();
+        let ret = Scalar(acc);
 
         // Pass through the vector backwards to compute the inverses
         // in place
         for (input, scratch) in inputs.iter_mut().rev().zip(scratch.iter().rev()) {
-            let tmp = UnpackedScalar::montgomery_mul(&acc, &input.unpack());
-            *input = UnpackedScalar::montgomery_mul(&acc, scratch).pack();
+            let tmp = UnpackedScalar::montgomery_mul(&acc, &input.0);
+            input.0 = UnpackedScalar::montgomery_mul(&acc, scratch);
             acc = tmp;
         }
 
@@ -1114,18 +1090,13 @@ impl Scalar {
         digits
     }
 
-    /// Unpack this `Scalar` to an `UnpackedScalar` for faster arithmetic.
-    pub(crate) fn unpack(&self) -> UnpackedScalar {
-        self.inner
-    }
-
     /// Reduce this `Scalar` modulo \\(\ell\\).
     #[allow(non_snake_case)]
     pub fn reduce(&self) -> Scalar {
-        let x = self.unpack();
+        let x = self.0;
         let xR = UnpackedScalar::mul_internal(&x, &constants::R);
         let x_mod_l = UnpackedScalar::montgomery_reduce(&xR);
-        x_mod_l.pack()
+        Scalar(x_mod_l)
     }
 
     /// Check whether this `Scalar` is the canonical representative mod \\(\ell\\).
@@ -1148,13 +1119,6 @@ impl Scalar {
 }
 
 impl UnpackedScalar {
-    /// Pack the limbs of this `UnpackedScalar` into a `Scalar`.
-    const fn pack(&self) -> Scalar {
-        Scalar {
-            inner: *self,
-        }
-    }
-
     /// Inverts an UnpackedScalar in Montgomery form.
     #[rustfmt::skip] // keep alignment of addition chain and squarings
     #[allow(clippy::just_underscores_and_digits)]
@@ -1582,7 +1546,7 @@ mod test {
     #[test]
     fn square() {
         let expected = X * X;
-        let actual = X.unpack().square().pack();
+        let actual = Scalar(X.0.square());
         let expected_bytes = expected.to_bytes();
         let actual_bytes = actual.to_bytes();
         for i in 0..32 {
@@ -1640,7 +1604,7 @@ mod test {
 
     #[test]
     fn to_bytes_from_bytes_roundtrips() {
-        let unpacked = X.unpack();
+        let unpacked = X.0;
         let bytes = unpacked.as_bytes();
         let should_be_unpacked = UnpackedScalar::from_bytes(&bytes);
 
@@ -1674,8 +1638,8 @@ mod test {
         let montgomery_reduced = UnpackedScalar::montgomery_reduce(&interim);
 
         // The Montgomery reduced scalar should match the reduced one, as well as the expected
-        assert_eq!(montgomery_reduced.0, reduced.unpack().0);
-        assert_eq!(montgomery_reduced.0, expected.unpack().0)
+        assert_eq!(montgomery_reduced.0, reduced.0.0);
+        assert_eq!(montgomery_reduced.0, expected.0.0)
     }
 
     #[test]
